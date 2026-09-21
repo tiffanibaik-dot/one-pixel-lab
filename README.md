@@ -41,16 +41,28 @@ An upside-down teardrop once received about 66% love because its outline resembl
 
 This still does not make the classifier perfect: its strong preference for a top dip could reject a rotated heart or a heart with a dip too subtle to detect. Quiz points measure agreement with the classifier, not whether the visitor is objectively right.
 
-## Short development log
+## Development Log for One Pixel Stop 4
 
-1. **Five-question quiz:** I changed the single-shape activity into a five-question quiz and added Love expert, Love learner, and Love yearner results to encourage visitors to keep playing.
-2. **Results screen:** I changed the title to “Are you good at love?” to appeal to visitors’ competitive streak and added a separate screen for the final score and description.
-3. **Trickier shapes and scores:** I added more ambiguous shapes. I noticed that a regular heart did not get 100% love and learned that the scores represented similarity, not actual probability. I adjusted the scoring so an exact training match could receive 100% love.
-4. **More training examples:** After an unusual heart was classified incorrectly, I added three unusual hearts to the training data. This showed me that changing the examples can change predictions.
-5. **Consistent quiz points:** I noticed that a visitor could earn a point even when the classifier disagreed. I changed the scoring so points consistently reward agreement and explained that the classifier can still be wrong.
-6. **Feature evidence:** After testing the upside-down teardrop, I made the top dip an important feature and added visible calculations and the name of the closest training example.
-7. **Final interface testing:** I put detailed evidence under “Show Exact Calculations,” added optional hints that get clearer after disagreements, and used “Next” between questions and “Try again” to restart.
+Round 1: I asked for the classifier to become a 5-point/question quiz, instead of letting the visitor just do 1 shape at a time. This incentivizes the visitor to engage with the site more. I also added different results based on the final score: Love expert for 5, Love learner for 2-4, and Love yearner for 0-1 points.
+
+Round 2: After testing the quiz, I wanted to make the user experience a bit more special. So, I changed the title from "Make your guess" to "Are you good at love?" Which I think attracts visitors with a competitive streak. I also asked for a separate result screen after all 5 questions, so visitors would clearly see their score, title, description, and a try again button.
+
+Round 3: The shapes were too easy to identify, so I asked for more ambiguous shapes that looked more like hearts. I also noticed that a normal heart was not getting a 100% love score, so I asked why and learned that the percentages represented similarity instead of actual probability. I changed the classifier to render an exact match of 100% to a trained heart.
+
+Round 4: While testing again, I found out that the classifier incorrectly classified one of the heart shapes. I think this is because I added the more ambiguous hearts into the quiz, so I asked to add 3 more ambiguous hearts into the training data. This proved to me that changing training examples can change a classifier's predictions.
+
+Round 5: When the visitor and classifier disagreed, the page did not award a point but it would say it did. I asked for this to be fixed. I also clarified the score is about agreeing with the classifier, not that the classifier is objectively correct.
+
+### Update after Experimenting
+
+I tested the classifier with an upside-down teardrop, and it predicted with a 66% love score. I realized the classifier was not emphasizing the divot at the top of the heart, one of the most identifying features of a heart. So I asked Codex to make it important.
+
+I also improved the page based on testing, putting detailed info under "Show Exact Calculations" so the page wouldn't be overwhelming. I also removed some clues that made the quiz too easy, and changed navigation buttons to be "Next," "See results," and "Try again" instead of just "Try again."
+
+### Update after User Testing
+
+After testing, I realized the page revealed clues about the classifier too early and made the game boring for my visitor. So, I wanted visitors to have a chance to figure out the pattern, so I created a "Hint" section that could reveal a hint word and become more obvious when the visitor disagrees with the classifier multiple times: from "Affection" → "Valentine" → "Divot" → "Heart."
 
 ## Credits
 
-Based on CPSC 1710 starter materials by [Xiuye Chen](https://github.com/xiuyechen), shared under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Quiz developed with assistance from Codex.
+Materials are by [Xiuye Chen](https://github.com/xiuyechen), developed with Codex, and shared under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
