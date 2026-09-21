@@ -9,7 +9,7 @@ The page teaches how training examples and the features a classifier looks for a
 ## How to open and use the page
 
 1. Download or clone this repository. If you download a ZIP, extract it first.
-2. Open `index.html` in Chrome, Safari, or Firefox by double-clicking the file. Use the browser rather than VS Code’s preview.
+2. Open `love classifier.html` in Chrome, Safari, or Firefox by double-clicking the file. Use the browser rather than VS Code’s preview.
 3. Look at the shape and choose **Love** or **Fake love**.
 4. Compare your guess with the prediction and its two percentage scores. Open **Hint** for a clue or **Show Exact Calculations** for the evidence.
 5. Click **Next** to continue. After question five, click **See results**, then **Try again** to restart.
@@ -20,7 +20,7 @@ You earn one point whenever your guess agrees with the classifier:
 - **2–4 points:** Love learner
 - **0–1 points:** Love yearner
 
-Hints get more direct after repeated disagreements. Everything runs in one HTML file, with no installation, API keys, paid services, or internet connection needed. `one-pixel.html` is the original starter page; `index.html` is the finished quiz.
+Hints get more direct after repeated disagreements. Everything runs in one HTML file, with no installation, API keys, paid services, or internet connection needed. `one-pixel.html` is the original starter page; `love classifier.html` is the finished quiz.
 
 ## How it makes a prediction
 
