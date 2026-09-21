@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Love or fake love? — A tiny shape classifier</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff7f3; color: #392333; font: 17px/1.6 system-ui, sans-serif; }
+  main { width: min(740px, 100%); margin: auto; padding: 36px 20px 48px; }
+  h1 { font-size: clamp(2rem, 7vw, 3.4rem); line-height: 1.1; margin: 12px 0; letter-spacing: -.04em; }
+  h2 { font-size: 1.25rem; margin: 0 0 12px; }
+  p { margin: 10px 0; }
+  .eyebrow { color: #943451; font-size: .8rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .intro { max-width: 590px; }
+  section { background: white; border: 1px solid #ecd8df; border-radius: 24px; padding: 24px; margin-top: 24px; }
+  .game { text-align: center; }
+  #shape { display: block; width: 200px; height: 200px; margin: 8px auto; }
+  .controls { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  button { font: inherit; border-radius: 12px; border: 1px solid #b98999; padding: 10px 16px; }
+  button { cursor: pointer; background: #a32f55; color: white; font-weight: 650; }
+  button.secondary { background: white; color: #802441; }
+  button:disabled { opacity: .55; cursor: default; }
+  button:hover:enabled { filter: brightness(.92); }
+  :focus-visible { outline: 3px solid #246f9b; outline-offset: 4px; }
+  #result { min-height: 108px; margin: 20px 0 12px; background: #fff0f5; border-radius: 16px; padding: 16px; }
+  #result strong { display: block; }
+  #result details { margin: 12px 0; text-align: left; font-size: .9rem; }
+  #result summary { cursor: pointer; color: #943451; font-weight: 650; }
+  #result details[open] summary { margin-bottom: 8px; }
+  .note { font-size: .9rem; color: #69545f; }
+  footer { margin-top: 24px; text-align: center; font-size: .85rem; color: #69545f; }
+  @media (max-width: 420px) { section { padding: 18px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Little shapes · tiny machine learning</div>
+    <h1>Love or fake love?</h1>
+    <p class="intro">Not everything that looks like love is real love. In this little game, you'll identify shapes as either <strong>“love”</strong> or <strong>“fake love.”</strong> Can you and a tiny classifier agree?</p>
+  </header>
+  <section class="game" aria-labelledby="game-title">
+    <h2 id="game-title">Are you good at love?</h2>
+    <div id="questions">
+    <p>Five tricky shapes, five chances. Earn one point each time your guess matches the classifier!</p>
+    <p id="progress" aria-live="polite"></p>
+    <canvas id="shape" width="240" height="240" role="img" aria-label="Random shape"></canvas>
+    <p>What’s your label?</p>
+    <div class="controls">
+      <button type="button" data-guess="love">Love ♥</button>
+      <button type="button" class="secondary" data-guess="fake love">Fake love</button>
+    </div>
+    <div id="result" role="status" aria-live="polite" aria-atomic="true">Make a guess to reveal the classifier’s answer.</div>
+    </div>
+    <div id="summary" role="status" tabindex="-1" hidden></div>
+    <button type="button" class="secondary" id="next">Next</button>
+  </section>
+  <section aria-labelledby="how-title">
+    <h2 id="how-title">How does it learn?</h2>
+    <p>This classifier learned from six hearts labeled “love”—including a shallow-dip heart, a narrow heart, and an uneven heart—and a circle, oval, and square labeled “fake love.” For each new shape, it compares a tiny black-and-white picture with its examples and also checks for a dip between two higher sides at the top. The top-divot feature contributes 70% of the score; similarity to the examples contributes 30%. This is called <strong>nearest-neighbor classification.</strong></p>
+    <p>It resizes shapes before comparing them, so a small heart and a big heart can both look like “love.” It uses the shape’s picture, not its name.</p>
+    <p>The love and fake love scores show how closely the picture matches each group of examples. They add up to 100%. An exact match to a learned heart with a top divot scores 100% love. Without a top divot, the love score cannot exceed 30%. More varied examples help it recognize unusual hearts, but unfamiliar shapes can still confuse it. These are similarity scores, not real probabilities.</p>
+    <p class="note">Quiz points reward agreement with the classifier. It can make mistakes, so disagreeing doesn’t necessarily mean your guess is wrong. The lesson: its answers come from its examples. This is a shape game, not a way to judge real love, people, or feelings.</p>
+  </section>
+  <footer>Made to play, guess, and learn. Everything runs right here in your browser.</footer>
+  <noscript>Please enable JavaScript in your browser to play this game.</noscript>
+</main>
+<script>
+  // All pictures are drawn locally. No libraries, downloads, or accounts needed.
+  const shapes = {
+    heart: { name: 'Heart', kind: 'heart', scale: .8 },
+    circle: { name: 'Circle', kind: 'circle', scale: .8 },
+    oval: { name: 'Oval', kind: 'oval', scale: .8 },
+    square: { name: 'Square', kind: 'square', scale: .8 },
+    small: { name: 'Small heart', kind: 'heart', scale: .5 },
+    big: { name: 'Big heart', kind: 'heart', scale: 1 },
+    diamond: { name: 'Diamond', kind: 'diamond', scale: .9 },
+    star: { name: 'Star', kind: 'star', scale: .95 },
+    drop: { name: 'Teardrop', kind: 'drop', scale: .9 },
+    shy: { name: 'Heart with a shallow dip', kind: 'heart', scale: .85, notch: -.87 },
+    slim: { name: 'Narrow heart', kind: 'heart', scale: .9, width: .65 },
+    uneven: { name: 'Uneven heart', kind: 'heart', scale: .85, left: .65, notch: -.75 },
+    wide: { name: 'Wide, shallow heart', kind: 'heart', scale: .8, height: .7, notch: -.85 },
+    pear: { name: 'Upside-down teardrop', kind: 'drop', scale: .85, angle: Math.PI },
+    soft: { name: 'Rounded diamond', kind: 'soft', scale: .9 },
+    tilted: { name: 'Tilted oval', kind: 'oval', scale: .85, angle: -.55 }
+
+  };
+  function draw(canvas, kind, scale = 1, color = '#bd3f67', detail = {}) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(canvas.width * .4 * scale, canvas.height * .4 * scale);
+    ctx.rotate(detail.angle || 0);
+    ctx.scale(detail.width || 1, detail.height || 1);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (kind === 'heart') {
+      const left = detail.left || 1;
+      ctx.moveTo(0, 1);
+      ctx.bezierCurveTo(-.35 * left, .65, -left, .15, -left, -.4);
+      ctx.bezierCurveTo(-left, -1.1, -.3 * left, -1.2, 0, detail.notch ?? -.6);
+      ctx.bezierCurveTo(.3, -1.2, 1, -1.1, 1, -.4);
+      ctx.bezierCurveTo(1, .15, .35, .65, 0, 1);
+    } else if (kind === 'circle' || kind === 'oval') {
+      ctx.ellipse(0, 0, kind === 'oval' ? .62 : 1, 1, 0, 0, Math.PI * 2);
+    } else if (kind === 'square') {
+      ctx.rect(-1, -1, 2, 2);
+    } else if (kind === 'soft') {
+      ctx.moveTo(0, -1);
+      ctx.bezierCurveTo(.45, -.85, .95, -.3, .85, 0);
+      ctx.bezierCurveTo(.75, .4, .3, .85, 0, 1);
+      ctx.bezierCurveTo(-.3, .85, -.75, .4, -.85, 0);
+      ctx.bezierCurveTo(-.95, -.3, -.45, -.85, 0, -1);
+    } else if (kind === 'diamond') {
+      ctx.moveTo(0, -1); ctx.lineTo(1, 0); ctx.lineTo(0, 1); ctx.lineTo(-1, 0);
+    } else if (kind === 'star') {
+      for (let i = 0; i < 10; i++) {
+        const angle = -Math.PI / 2 + i * Math.PI / 5;
+        const radius = i % 2 === 0 ? 1 : .45;
+        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+    } else if (kind === 'drop') {
+      ctx.moveTo(0, -1);
+      ctx.bezierCurveTo(.3, -.45, 1, .1, .8, .6);
+      ctx.bezierCurveTo(.55, 1.15, -.55, 1.15, -.8, .6);
+      ctx.bezierCurveTo(-1, .1, -.3, -.45, 0, -1);
+    }
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  // Use a detailed silhouette so even shallow top divots remain visible.
+  const resolution = 96;
+  function pixels(shape) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = resolution;
+    draw(canvas, shape.kind, 1, '#000', shape);
+    const data = canvas.getContext('2d').getImageData(0, 0, resolution, resolution).data;
+    return Array.from({ length: resolution * resolution }, (_, i) => data[i * 4 + 3] / 255);
+  }
+  // Inspect only the image, never the shape name or its preset label.
+  function topDivot(vector) {
+    const tops = Array(resolution).fill(null);
+    let bottom = 0;
+    for (let x = 0; x < resolution; x++) {
+      for (let y = 0; y < resolution; y++) {
+        if (vector[y * resolution + x] >= .5) {
+          if (tops[x] === null) tops[x] = y;
+          bottom = Math.max(bottom, y);
+        }
+      }
+    }
+    const left = tops.findIndex(y => y !== null);
+    if (left < 0) return { present: false, depth: 0 };
+    const right = tops.findLastIndex(y => y !== null);
+    const width = right - left + 1;
+    const top = Math.min(...tops.filter(y => y !== null));
+    const height = bottom - top + 1;
+    let depth = 0;
+    for (let x = Math.ceil(left + width * .3); x <= left + width * .7; x++) {
+      const reach = Math.max(2, Math.round(width * .28));
+      const before = tops.slice(Math.max(left, x - reach), x).filter(y => y !== null);
+      const after = tops.slice(x + 1, Math.min(right + 1, x + reach + 1)).filter(y => y !== null);
+      if (tops[x] === null || !before.length || !after.length) continue;
+      // Both sides must rise above the center; a sloping oval is not a divot.
+      const dip = tops[x] - Math.max(Math.min(...before), Math.min(...after));
+      if (tops[x] < top + height * .45) depth = Math.max(depth, dip / height);
+    }
+    return { present: depth >= .015, depth };
+  }
+  const training = [
+    ['heart', 'love'], ['circle', 'fake love'], ['oval', 'fake love'],
+    ['square', 'fake love'], ['small', 'love'], ['big', 'love'],
+    ['shy', 'love'], ['slim', 'love'], ['uneven', 'love']
+  ].map(([id, label]) => ({ id, label, vector: pixels(shapes[id]) }));
+  function classify(vector) {
+    let best = null, bestDistance = Infinity;
+    const distances = { love: Infinity, 'fake love': Infinity };
+    for (const example of training) {
+      const distance = vector.reduce((sum, pixel, i) => sum + (pixel - example.vector[i]) ** 2, 0) / vector.length;
+      distances[example.label] = Math.min(distances[example.label], distance);
+      if (distance < bestDistance) { best = example; bestDistance = distance; }
+    }
+    // Convert each group's closest pixel distance into relative similarity.
+    // This is a similarity score, not a calibrated probability.
+    const totalDistance = distances.love + distances['fake love'];
+    const similarity = totalDistance === 0 ? 50
+      : 100 * distances['fake love'] / totalDistance;
+    const divot = topDivot(vector);
+    const featurePoints = divot.present ? 70 : 0;
+    const similarityPoints = Math.round(.3 * similarity);
+    const loveScore = featurePoints + similarityPoints;
+    return { id: best.id, label: loveScore > 50 ? 'love' : 'fake love',
+      loveScore, fakeScore: 100 - loveScore, divot, featurePoints,
+      similarityPoints, similarity: Math.round(similarity) };
+  }
+
+  let currentShape, questions, questionIndex, score, answered, finished;
+  const progress = document.getElementById('progress');
+  const next = document.getElementById('next');
+  const summary = document.getElementById('summary');
+  const questionScreen = document.getElementById('questions');
+  const result = document.getElementById('result');
+  const buttons = document.querySelectorAll('[data-guess]');
+  function showShape() {
+    currentShape = questions[questionIndex];
+    answered = false;
+    next.disabled = true;
+    next.textContent = 'Next';
+    progress.textContent = `Question ${questionIndex + 1} of 5 · Points: ${score}/5`;
+    const shape = shapes[currentShape], canvas = document.getElementById('shape');
+    draw(canvas, shape.kind, shape.scale, '#bd3f67', shape);
+    canvas.setAttribute('aria-label', shape.name);
+    result.textContent = 'Make a guess to reveal the classifier’s answer.';
+    buttons.forEach(button => { button.disabled = false; });
+  }
+  buttons.forEach(button => button.addEventListener('click', () => {
+    if (answered) return;
+    answered = true;
+    const match = classify(pixels(shapes[currentShape]));
+    const agree = button.dataset.guess === match.label;
+    if (agree) score++;
+    progress.textContent = `Question ${questionIndex + 1} of 5 · Points: ${score}/5`;
+    const heading = document.createElement('strong');
+    heading.textContent = `${match.label === 'love' ? '❤️' : '💔'} Prediction: ${match.label.toUpperCase()}`;
+    const love = document.createElement('div');
+    love.textContent = `Love score: ${match.loveScore}%`;
+    const fake = document.createElement('div');
+    fake.textContent = `Fake love score: ${match.fakeScore}%`;
+    const why = document.createElement('p');
+    why.textContent = match.divot.present
+      ? 'Why? A top divot was detected: the middle dips below both sides. That is strong evidence for the correct shape.'
+      : 'Why? No top divot was detected. Looking similar to a correct shape is not enough without that dip.';
+    const evidence = document.createElement('details');
+    const evidenceTitle = document.createElement('summary');
+    evidenceTitle.textContent = 'Show Exact Calculations';
+    const feature = document.createElement('div');
+    feature.textContent = `Top divot: ${match.divot.present ? 'yes' : 'no'} → ${match.featurePoints}/70 love points`;
+    const outline = document.createElement('div');
+    outline.textContent = `Outline similarity: ${match.similarity}% love → ${match.similarityPoints}/30 love points`;
+    const closest = document.createElement('div');
+    const example = training.find(item => item.id === match.id);
+    const exampleName = match.id === 'heart' ? 'Regular heart' : shapes[match.id].name;
+    closest.textContent = `Closest learned outline: ${exampleName} (labeled “${example.label}”).`;
+    const calculation = document.createElement('div');
+    calculation.textContent = `Love: ${match.featurePoints} + ${match.similarityPoints} = ${match.loveScore}%. Fake love: 100 − ${match.loveScore} = ${match.fakeScore}%.`;
+    evidence.append(evidenceTitle, feature, closest, outline, calculation);
+    const comparison = document.createElement('div');
+    comparison.className = 'note';
+    comparison.textContent = `${agree ? "+1 point!" : "No point this time."} You guessed “${button.dataset.guess}.” ${agree ? 'You and the classifier agree!' : 'You and the classifier disagree. It can make mistakes, too!'}`;
+    result.replaceChildren(heading, love, fake, why, evidence, comparison);
+    buttons.forEach(item => { item.disabled = true; });
+    next.disabled = false;
+    if (questionIndex === 4) next.textContent = 'See results';
+  }));
+  function finishQuiz() {
+    finished = true;
+    next.textContent = 'Try again';
+    const title = score === 5 ? 'Love expert' : score >= 2 ? 'Love learner' : 'Love yearner';
+    const description = score === 5
+      ? 'Perfect harmony! You matched the classifier on all five shapes.'
+      : score >= 2
+        ? 'Your heart radar is warming up. A little practice and you’ll be spotting love like a pro!'
+        : 'A hopeful heart with more to discover. Give it another go — every guess is a chance to learn!';
+    const heading = document.createElement('h2');
+    heading.textContent = `${score}/5 · ${title} ♥`;
+    const text = document.createElement('p');
+    text.textContent = description;
+    const hint = document.createElement('p');
+    hint.className = 'note';
+    hint.textContent = 'Try again to start a fresh five-question quiz.';
+    summary.replaceChildren(heading, text, hint);
+    questionScreen.hidden = true;
+    summary.hidden = false;
+    summary.focus();
+  }
+  function startQuiz() {
+    questions = ['heart', 'shy', 'slim', 'uneven', 'wide', 'pear', 'soft', 'tilted', 'drop'];
+    // Shuffle once so the five questions never repeat an identical shape.
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+    questions = questions.slice(0, 5);
+    questionIndex = 0;
+    score = 0;
+    finished = false;
+    questionScreen.hidden = false;
+    summary.hidden = true;
+    summary.replaceChildren();
+    showShape();
+  }
+  next.addEventListener('click', () => {
+    if (!answered) return;
+    if (finished) startQuiz();
+    else if (questionIndex === 4) { finishQuiz(); return; }
+    else { questionIndex++; showShape(); }
+    buttons[0].focus();
+  });
+  startQuiz();
+</script>
+</body>
+</html>
