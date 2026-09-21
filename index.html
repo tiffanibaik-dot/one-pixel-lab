@@ -58,10 +58,13 @@
   </section>
   <section aria-labelledby="how-title">
     <h2 id="how-title">How does it learn?</h2>
+    <details>
+      <summary>Read the explanation (contains clues)</summary>
     <p>This classifier learned from six hearts labeled “love”—including a shallow-dip heart, a narrow heart, and an uneven heart—and a circle, oval, and square labeled “fake love.” For each new shape, it compares a tiny black-and-white picture with its examples and also checks for a dip between two higher sides at the top. The top-divot feature contributes 70% of the score; similarity to the examples contributes 30%. This is called <strong>nearest-neighbor classification.</strong></p>
     <p>It resizes shapes before comparing them, so a small heart and a big heart can both look like “love.” It uses the shape’s picture, not its name.</p>
     <p>The love and fake love scores show how closely the picture matches each group of examples. They add up to 100%. An exact match to a learned heart with a top divot scores 100% love. Without a top divot, the love score cannot exceed 30%. More varied examples help it recognize unusual hearts, but unfamiliar shapes can still confuse it. These are similarity scores, not real probabilities.</p>
     <p class="note">Quiz points reward agreement with the classifier. It can make mistakes, so disagreeing doesn’t necessarily mean your guess is wrong. The lesson: its answers come from its examples. This is a shape game, not a way to judge real love, people, or feelings.</p>
+    </details>
   </section>
   <footer>Made to play, guess, and learn. Everything runs right here in your browser.</footer>
   <noscript>Please enable JavaScript in your browser to play this game.</noscript>
@@ -197,7 +200,7 @@
       similarityPoints, similarity: Math.round(similarity) };
   }
 
-  let currentShape, questions, questionIndex, score, answered, finished;
+  let currentShape, questions, questionIndex, score, answered, finished, misses;
   const progress = document.getElementById('progress');
   const next = document.getElementById('next');
   const summary = document.getElementById('summary');
@@ -222,6 +225,7 @@
     const match = classify(pixels(shapes[currentShape]));
     const agree = button.dataset.guess === match.label;
     if (agree) score++;
+    else misses++;
     progress.textContent = `Question ${questionIndex + 1} of 5 · Points: ${score}/5`;
     const heading = document.createElement('strong');
     heading.textContent = `${match.label === 'love' ? '❤️' : '💔'} Prediction: ${match.label.toUpperCase()}`;
@@ -230,9 +234,13 @@
     const fake = document.createElement('div');
     fake.textContent = `Fake love score: ${match.fakeScore}%`;
     const why = document.createElement('p');
-    why.textContent = match.divot.present
-      ? 'Why? A top divot was detected: the middle dips below both sides. That is strong evidence for the correct shape.'
-      : 'Why? No top divot was detected. Looking similar to a correct shape is not enough without that dip.';
+    why.textContent = 'Why?';
+    const hint = document.createElement('details');
+    const hintTitle = document.createElement('summary');
+    hintTitle.textContent = 'Hint';
+    const hintWord = document.createElement('p');
+    hintWord.textContent = misses >= 4 ? 'Heart' : misses >= 3 ? 'Divot' : misses >= 2 ? 'Valentine' : 'Affection';
+    hint.append(hintTitle, hintWord);
     const evidence = document.createElement('details');
     const evidenceTitle = document.createElement('summary');
     evidenceTitle.textContent = 'Show Exact Calculations';
@@ -250,7 +258,7 @@
     const comparison = document.createElement('div');
     comparison.className = 'note';
     comparison.textContent = `${agree ? "+1 point!" : "No point this time."} You guessed “${button.dataset.guess}.” ${agree ? 'You and the classifier agree!' : 'You and the classifier disagree. It can make mistakes, too!'}`;
-    result.replaceChildren(heading, love, fake, why, evidence, comparison);
+    result.replaceChildren(heading, love, fake, why, hint, evidence, comparison);
     buttons.forEach(item => { item.disabled = true; });
     next.disabled = false;
     if (questionIndex === 4) next.textContent = 'See results';
@@ -286,6 +294,7 @@
     questions = questions.slice(0, 5);
     questionIndex = 0;
     score = 0;
+    misses = 0;
     finished = false;
     questionScreen.hidden = false;
     summary.hidden = true;
