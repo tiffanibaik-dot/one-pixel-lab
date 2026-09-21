@@ -20,6 +20,7 @@
   button { font: inherit; border-radius: 12px; border: 1px solid #b98999; padding: 10px 16px; }
   button { cursor: pointer; background: #a32f55; color: white; font-weight: 650; }
   button.secondary { background: white; color: #802441; }
+  button kbd { margin-left: 8px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; font: inherit; font-size: .8em; }
   button:disabled { opacity: .55; cursor: default; }
   button:hover:enabled { filter: brightness(.92); }
   :focus-visible { outline: 3px solid #246f9b; outline-offset: 4px; }
@@ -48,8 +49,8 @@
     <canvas id="shape" width="240" height="240" role="img" aria-label="Random shape"></canvas>
     <p>What’s your label?</p>
     <div class="controls">
-      <button type="button" data-guess="love">Love ♥</button>
-      <button type="button" class="secondary" data-guess="fake love">Fake love</button>
+      <button type="button" data-guess="love" aria-keyshortcuts="l">Love ♥ <kbd>L</kbd></button>
+      <button type="button" class="secondary" data-guess="fake love" aria-keyshortcuts="f">Fake love <kbd>F</kbd></button>
     </div>
     <div id="result" role="status" aria-live="polite" aria-atomic="true">Make a guess to reveal the classifier’s answer.</div>
     </div>
@@ -207,11 +208,35 @@
   const questionScreen = document.getElementById('questions');
   const result = document.getElementById('result');
   const buttons = document.querySelectorAll('[data-guess]');
+  document.addEventListener('keydown', event => {
+    if (event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+    if (event.key === ' ' && answered && !next.disabled) {
+      if (event.target instanceof Element && event.target.closest('summary, a')) return;
+      event.preventDefault();
+      next.click();
+      return;
+    }
+    if (answered || finished || questionScreen.hidden) return;
+    const label = { l: 'love', f: 'fake love' }[event.key.toLowerCase()];
+    if (!label) return;
+    const button = Array.from(buttons).find(item => item.dataset.guess === label);
+    if (!button || button.disabled) return;
+    event.preventDefault();
+    button.click();
+  });
+  function setNextLabel(label) {
+    next.replaceChildren(`${label} `);
+    const shortcut = document.createElement('kbd');
+    shortcut.textContent = 'Space';
+    next.append(shortcut);
+    next.setAttribute('aria-keyshortcuts', 'Space');
+  }
   function showShape() {
     currentShape = questions[questionIndex];
     answered = false;
     next.disabled = true;
-    next.textContent = 'Next';
+    setNextLabel('Next');
     progress.textContent = `Question ${questionIndex + 1} of 5 · Points: ${score}/5`;
     const shape = shapes[currentShape], canvas = document.getElementById('shape');
     draw(canvas, shape.kind, shape.scale, '#bd3f67', shape);
@@ -261,11 +286,13 @@
     result.replaceChildren(heading, love, fake, why, hint, evidence, comparison);
     buttons.forEach(item => { item.disabled = true; });
     next.disabled = false;
-    if (questionIndex === 4) next.textContent = 'See results';
+    if (questionIndex === 4) {
+      setNextLabel('See results');
+    }
   }));
   function finishQuiz() {
     finished = true;
-    next.textContent = 'Try again';
+    setNextLabel('Try again');
     const title = score === 5 ? 'Love expert' : score >= 2 ? 'Love learner' : 'Love yearner';
     const description = score === 5
       ? 'Perfect harmony! You matched the classifier on all five shapes.'
